@@ -17,7 +17,7 @@ class Base(DeclarativeBase):
 
 connect_args = {}
 if settings.environment == "production":
-    connect_args = {"timeout": 10, "ssl": "require"}
+    connect_args = {"timeout": 10, "ssl": True}
 
 engine = create_async_engine(
     settings.database_url,

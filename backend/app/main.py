@@ -7,8 +7,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import Base, init_db
 from app.routers import (
-
-logger = logging.getLogger(__name__)
     auth,
     clients,
     dashboard,
@@ -19,6 +17,8 @@ logger = logging.getLogger(__name__)
     settings as settings_router,
     time_entries,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

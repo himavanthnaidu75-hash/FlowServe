@@ -1,13 +1,12 @@
 from datetime import date, timedelta
-from collections import defaultdict
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
-from app.models.client import Client
 from app.models.invoice import Invoice
 from app.models.project import Project
 from app.models.time_entry import TimeEntry
@@ -15,6 +14,8 @@ from app.models.user import User
 from app.schemas.dashboard import DashboardStats, RevenuePoint
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+
+_is_sqlite = settings.database_url.startswith("sqlite")
 
 
 @router.get("/stats", response_model=DashboardStats)
@@ -71,9 +72,17 @@ async def get_revenue(
     today = date.today()
     start = (today.replace(day=1) - timedelta(days=5 * 31)).replace(day=1)
 
+    if _is_sqlite:
+        month_col = func.strftime("%Y-%m", Invoice.paid_at)
+        group_col = month_col
+    else:
+        month_trunc = func.date_trunc("month", Invoice.paid_at)
+        month_col = func.to_char(month_trunc, "YYYY-MM")
+        group_col = month_trunc
+
     rows = await db.execute(
         select(
-            func.to_char(func.date_trunc("month", Invoice.paid_at), "YYYY-MM"),
+            month_col,
             func.coalesce(func.sum(Invoice.amount), 0),
         )
         .where(
@@ -82,15 +91,11 @@ async def get_revenue(
             Invoice.paid_at.isnot(None),
             func.date(Invoice.paid_at) >= start,
         )
-        .group_by(
-            func.date_trunc("month", Invoice.paid_at),
-            func.to_char(func.date_trunc("month", Invoice.paid_at), "YYYY-MM"),
-        )
-        .order_by(func.date_trunc("month", Invoice.paid_at))
+        .group_by(group_col)
+        .order_by(group_col)
     )
-    rows_pairs = rows.all()
 
-    by_month: dict[str, float] = {m: float(a) for m, a in rows_pairs}
+    by_month: dict[str, float] = {m: float(a) for m, a in rows.all()}
 
     out: list[RevenuePoint] = []
     cur = start

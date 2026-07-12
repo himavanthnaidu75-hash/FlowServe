@@ -13,34 +13,21 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/signup", response_model=TokenResponse, status_code=201)
 async def signup(payload: SignupRequest, db: AsyncSession = Depends(get_db)):
-    try:
-        existing = await db.execute(select(User).where(User.email == payload.email))
-        if existing.scalar_one_or_none():
-            raise HTTPException(status_code=400, detail="Email already registered")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Step1: {e}")
+    existing = await db.execute(select(User).where(User.email == payload.email))
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-    try:
-        user = User(
-            name=payload.name,
-            email=payload.email,
-            password_hash=hash_password(payload.password),
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Step2: {e}")
+    user = User(
+        name=payload.name,
+        email=payload.email,
+        password_hash=hash_password(payload.password),
+    )
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
 
-    try:
-        token = create_access_token(user.id, extra={"name": user.name, "email": user.email})
-        return TokenResponse(access_token=token)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Step3: {e}")
+    token = create_access_token(user.id, extra={"name": user.name, "email": user.email})
+    return TokenResponse(access_token=token)
 
 
 @router.post("/login", response_model=TokenResponse)

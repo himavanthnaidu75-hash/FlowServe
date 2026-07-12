@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import AsyncContextManager
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -39,5 +40,6 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Create all tables. Use Alembic for real migrations in production."""
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(text(f"DROP TABLE IF EXISTS {table.name} CASCADE"))
         await conn.run_sync(Base.metadata.create_all)

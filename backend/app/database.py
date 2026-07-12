@@ -40,8 +40,12 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Create all tables. Use Alembic for real migrations in production."""
     async with engine.begin() as conn:
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS portal_tokens CASCADE")))
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS user_settings CASCADE")))
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS time_entries CASCADE")))
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS invoices CASCADE")))
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS proposals CASCADE")))
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS projects CASCADE")))
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS clients CASCADE")))
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS users CASCADE")))
         await conn.run_sync(Base.metadata.create_all)
-        try:
-            await conn.run_sync(lambda c: c.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(120) NOT NULL DEFAULT ''")))
-        except Exception:
-            pass

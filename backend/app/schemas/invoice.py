@@ -5,9 +5,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class LineItem(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     description: str
     quantity: float = 1.0
-    price: float = 0.0
+    unit_price: float = Field(0.0, alias="price")
 
 
 class InvoiceBase(BaseModel):

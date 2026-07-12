@@ -68,7 +68,7 @@ async def create_invoice(
         raise HTTPException(status_code=404, detail="Client not found")
 
     total = sum(
-        Decimal(str(li.quantity)) * Decimal(str(li.price)) for li in payload.line_items
+        Decimal(str(li.quantity)) * Decimal(str(li.unit_price)) for li in payload.line_items
     )
     number = await _gen_invoice_number(db, user.id)
 
@@ -120,7 +120,7 @@ async def update_invoice(
     if payload.line_items is not None:
         inv.line_items = [li.model_dump() for li in payload.line_items]
         inv.amount = float(
-            sum(Decimal(str(li.quantity)) * Decimal(str(li.price)) for li in payload.line_items)
+            sum(Decimal(str(li.quantity)) * Decimal(str(li.unit_price)) for li in payload.line_items)
         )
 
     if payload.due_date is not None:

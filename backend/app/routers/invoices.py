@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -180,7 +181,8 @@ async def remind_invoice(
     if inv.status == "paid":
         raise HTTPException(status_code=400, detail="Invoice already paid")
 
-    pay_url = create_payment_link(inv.number, float(inv.amount or 0), inv.currency)
+    loop = asyncio.get_running_loop()
+    pay_url = await loop.run_in_executor(None, create_payment_link, inv.number, float(inv.amount or 0), inv.currency)
     html = (
         f"<p>Hi {inv.client.name},</p>"
         f"<p>This is a friendly reminder that invoice <b>{inv.number}</b> "
@@ -188,5 +190,5 @@ async def remind_invoice(
         f"<p><a href='{pay_url}'>Pay invoice</a></p>"
         f"<p>— {user.name}</p>"
     )
-    dispatched = send_email(inv.client.email, f"Reminder: invoice {inv.number}", html)
+    dispatched = await loop.run_in_executor(None, send_email, inv.client.email, f"Reminder: invoice {inv.number}", html)
     return {"sent": dispatched, "invoice_id": inv.id, "number": inv.number}

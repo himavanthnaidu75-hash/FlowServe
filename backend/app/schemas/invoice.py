@@ -1,5 +1,5 @@
-from datetime import date
-from typing import Any, Optional
+from datetime import date, datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,5 +41,5 @@ class InvoiceOut(BaseModel):
     currency: str
     issue_date: date
     due_date: date
-    paid_at: Optional[Any] = None
-    line_items: list[Any]
+    paid_at: Optional[datetime] = None
+    line_items: list[LineItem]

@@ -25,8 +25,8 @@ class ProjectUpdate(BaseModel):
     client_id: Optional[str] = None
     deadline: Optional[date] = None
     amount: Optional[float] = None
-    progress: Optional[int] = None
-    status: Optional[str] = None
+    progress: Optional[int] = Field(None, ge=0, le=100)
+    status: Optional[str] = Field(None, pattern="^(draft|in_progress|review|completed)$")
 
 
 class ProjectStatusUpdate(BaseModel):

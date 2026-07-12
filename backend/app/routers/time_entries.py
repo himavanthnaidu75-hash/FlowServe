@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.deps import get_current_user
+from app.models.project import Project
 from app.models.time_entry import TimeEntry
 from app.models.user import User
 from app.schemas.time_entry import TimeEntryCreate, TimeEntryOut, TimeEntryUpdate
@@ -33,6 +34,15 @@ async def create_entry(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    if payload.project_id:
+        project = await db.scalar(
+            select(Project).where(
+                Project.id == payload.project_id, Project.user_id == user.id
+            )
+        )
+        if not project:
+            raise HTTPException(status_code=404, detail="Project not found")
+
     entry = TimeEntry(
         user_id=user.id,
         project_id=payload.project_id,

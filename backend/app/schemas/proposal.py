@@ -1,5 +1,5 @@
-from datetime import date
-from typing import Any, Optional
+from datetime import date, datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ProposalSection(BaseModel):
     type: str = Field(..., description="overview | timeline | pricing | terms | custom")
     title: str
-    content: Any = None
+    content: str = ""
 
 
 class ProposalBase(BaseModel):
@@ -41,5 +41,5 @@ class ProposalOut(BaseModel):
     status: str
     amount: float
     date: date
-    sent_at: Optional[Any] = None
-    sections: list[Any]
+    sent_at: Optional[datetime] = None
+    sections: list[ProposalSection]

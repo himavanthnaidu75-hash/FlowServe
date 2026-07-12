@@ -51,9 +51,3 @@ class Invoice(Base):
     )
 
     client = relationship("Client", back_populates="invoices")
-
-
-def next_invoice_number(session_factory) -> str:
-    """Generate next invoice number like INV-0001. Pass AsyncSession factory."""
-    # Implemented in router since it needs DB access
-    return f"INV-{uuid.uuid4().hex[:6].upper()}"

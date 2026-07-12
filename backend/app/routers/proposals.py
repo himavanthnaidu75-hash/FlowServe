@@ -89,7 +89,7 @@ async def update_proposal(
         raise HTTPException(status_code=404, detail="Proposal not found")
 
     data = payload.model_dump(exclude_unset=True)
-    if "sections" in data and data["sections"] is not None:
+    if "sections" in data and payload.sections is not None:
         data["sections"] = [s.model_dump() for s in payload.sections]
 
     for key, value in data.items():
@@ -130,7 +130,8 @@ async def send_proposal(
     </ul>
     <p>— {user.name}</p>
     """
-    send_email(proposal.client.email, f"New proposal: {proposal.title}", html)
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, send_email, proposal.client.email, f"New proposal: {proposal.title}", html)
 
     await db.commit()
     await db.refresh(proposal)

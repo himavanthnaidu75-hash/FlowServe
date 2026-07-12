@@ -15,10 +15,15 @@ class Base(DeclarativeBase):
     pass
 
 
+connect_args = {}
+if settings.environment == "production":
+    connect_args = {"timeout": 10, "ssl": "require"}
+
 engine = create_async_engine(
     settings.database_url,
     echo=settings.environment == "development",
     pool_pre_ping=True,
+    connect_args=connect_args,
 )
 
 AsyncSessionLocal = async_sessionmaker(

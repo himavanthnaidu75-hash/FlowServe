@@ -40,6 +40,5 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 async def init_db() -> None:
     """Create all tables. Use Alembic for real migrations in production."""
     async with engine.begin() as conn:
-        for table in reversed(Base.metadata.sorted_tables):
-            await conn.execute(text(f"DROP TABLE IF EXISTS {table.name} CASCADE"))
-        await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(lambda c: c.execute(text("DROP TABLE IF EXISTS users CASCADE")))
+        await conn.run_sync(lambda sync_conn: Base.metadata.create_all(sync_conn))

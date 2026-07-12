@@ -20,9 +20,7 @@ from app.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables on startup in dev. Use Alembic in production.
-    if settings.environment == "development":
-        await init_db()
+    await init_db()
     yield
 
 

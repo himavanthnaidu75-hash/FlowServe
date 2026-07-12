@@ -17,22 +17,32 @@ async def signup(payload: SignupRequest, db: AsyncSession = Depends(get_db)):
         existing = await db.execute(select(User).where(User.email == payload.email))
         if existing.scalar_one_or_none():
             raise HTTPException(status_code=400, detail="Email already registered")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Step 1 (check existing): {e}")
 
+    try:
         user = User(
             name=payload.name,
             email=payload.email,
             password_hash=hash_password(payload.password),
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Step 2 (create user): {e}")
+
+    try:
         db.add(user)
         await db.commit()
         await db.refresh(user)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Step 3 (db commit): {e}")
 
+    try:
         token = create_access_token(user.id, extra={"name": user.name, "email": user.email})
         return TokenResponse(access_token=token)
-    except HTTPException:
-        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Step 4 (token): {e}")
 
 
 @router.post("/login", response_model=TokenResponse)

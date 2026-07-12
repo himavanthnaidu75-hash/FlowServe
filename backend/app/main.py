@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
 
 from app.config import settings
-from app.database import Base, init_db
+from app.database import Base, engine, init_db
+from app.models import *
 from app.routers import (
     auth,
     clients,
@@ -24,10 +25,7 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        await init_db()
-    except Exception as e:
-        logger.exception("init_db failed")
+    await init_db()
     yield
 
 

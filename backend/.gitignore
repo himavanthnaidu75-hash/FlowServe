@@ -1,0 +1,7 @@
+# FlowServe backend temp files
+.venv/
+__pycache__/
+*.pyc
+*.db
+.env
+*.log

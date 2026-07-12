@@ -100,6 +100,24 @@ async def update_proposal(
     return ProposalOut.model_validate(proposal)
 
 
+@router.delete("/{proposal_id}", status_code=204)
+async def delete_proposal(
+    proposal_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    proposal = await db.scalar(
+        select(Proposal).where(
+            Proposal.id == proposal_id, Proposal.user_id == user.id
+        )
+    )
+    if not proposal:
+        raise HTTPException(status_code=404, detail="Proposal not found")
+
+    await db.delete(proposal)
+    await db.commit()
+
+
 @router.post("/{proposal_id}/send", response_model=ProposalOut)
 async def send_proposal(
     proposal_id: str,

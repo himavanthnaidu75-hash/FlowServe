@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useFetch, useCreate } from '../hooks/useData';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, AlertCircle, Download, Send, Receipt } from 'lucide-react';
+import { Plus, Search, AlertCircle, Download, Send, Receipt, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { Modal } from '../components/ui/Modal';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -13,16 +13,23 @@ export default function Invoices() {
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const { data: invoices, isLoading, isError, refetch } = useFetch<any[]>(['invoices'], '/invoices');
+  const { data: clients } = useFetch<any[]>(['clients'], '/clients');
   const createInvoice = useCreate<any, any>(['invoices'], '/invoices');
   const queryClient = useQueryClient();
   const { addToast } = useToastStore();
 
-  const sendInvoice = useMutation({
-    mutationFn: async (id: string) => await api.post(`/invoices/${id}/send`),
+  const deleteInvoice = useMutation({
+    mutationFn: async (id: string) => await api.delete(`/invoices/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
-      addToast('Invoice sent successfully');
-    }
+      addToast('Invoice deleted');
+    },
+  });
+
+  const remindInvoice = useMutation({
+    mutationFn: async (id: string) => await api.post(`/invoices/${id}/remind`),
+    onSuccess: () => addToast('Reminder sent'),
+    onError: () => addToast('Failed to send reminder', 'error'),
   });
 
   if (isLoading) return <div className="h-64 skeleton-shimmer rounded-xl"></div>;
@@ -54,15 +61,15 @@ export default function Invoices() {
         <EmptyState icon={Receipt} title="No Invoices Yet" message="Start by creating your first invoice." actionLabel="New Invoice" onAction={() => setModalOpen(true)} />
       ) : (
         <div className="space-y-3">
-          {invoices?.filter(i => i.client.toLowerCase().includes(search.toLowerCase())).map((i) => (
+          {invoices?.filter(i => (i.number || '').toLowerCase().includes(search.toLowerCase()) || (i.client_id || '').toLowerCase().includes(search.toLowerCase())).map((i) => (
             <div key={i.id} className="brutalist-card flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-4">
               <div className="flex items-center gap-4">
                 <div className="p-2 bg-bg-tertiary rounded-md">
                   <Receipt className="w-5 h-5 text-red-500" />
                 </div>
                 <div>
-                  <h4 className="font-bold font-mono">#{i.id.substring(0, 8)}</h4>
-                  <p className="text-sm text-gray-500">{i.client}</p>
+                  <h4 className="font-bold font-mono">#{i.number}</h4>
+                  <p className="text-sm text-gray-500">{i.client_id}</p>
                 </div>
               </div>
               <div className="flex items-center gap-6">
@@ -76,10 +83,10 @@ export default function Invoices() {
                 </div>
                 <StatusBadge status={i.status} />
                 <div className="flex gap-2">
-                  <button aria-label="Download invoice" onClick={() => addToast('Download starting...')} className="p-2 hover:bg-bg-tertiary rounded-md"><Download className="w-4 h-4" /></button>
-                  {i.status === 'draft' && (
-                    <button aria-label="Send invoice" onClick={() => sendInvoice.mutate(i.id)} className="p-2 hover:bg-bg-tertiary rounded-md"><Send className="w-4 h-4" /></button>
+                  {i.status === 'pending' && (
+                    <button aria-label="Send reminder" onClick={() => remindInvoice.mutate(i.id)} className="p-2 hover:bg-bg-tertiary rounded-md" title="Send reminder"><Send className="w-4 h-4" /></button>
                   )}
+                  <button aria-label="Delete invoice" onClick={() => { if (confirm('Delete this invoice?')) deleteInvoice.mutate(i.id); }} className="p-2 hover:bg-bg-tertiary rounded-md text-red-500"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
             </div>
@@ -88,9 +95,17 @@ export default function Invoices() {
       )}
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="New Invoice">
-        <form onSubmit={async (e) => { e.preventDefault(); const f = new FormData(e.currentTarget); await createInvoice.mutateAsync({ client: f.get('client'), amount: Number(f.get('amount')), due_date: f.get('due_date') }); addToast('Invoice created successfully'); setModalOpen(false); }} className="space-y-4">
-          <div><label htmlFor="client" className="block text-xs uppercase text-gray-500 mb-2">Client</label><input id="client" name="client" className="brutalist-input" required /></div>
-          <div><label htmlFor="amount" className="block text-xs uppercase text-gray-500 mb-2">Amount ($)</label><input id="amount" name="amount" type="number" className="brutalist-input" required /></div>
+        <form onSubmit={async (e) => { e.preventDefault(); const f = new FormData(e.currentTarget); const amount = Number(f.get('amount')); await createInvoice.mutateAsync({ client_id: f.get('client_id'), due_date: f.get('due_date'), line_items: [{ description: 'Invoice total', quantity: 1, price: amount }] }); addToast('Invoice created successfully'); setModalOpen(false); }} className="space-y-4">
+          <div>
+            <label htmlFor="client" className="block text-xs uppercase text-gray-500 mb-2">Client</label>
+            <select id="client" name="client_id" className="brutalist-input w-full" required>
+              <option value="">Select a client</option>
+              {clients?.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div><label htmlFor="amount" className="block text-xs uppercase text-gray-500 mb-2">Amount ($)</label><input id="amount" name="amount" type="number" step="0.01" className="brutalist-input" required /></div>
           <div><label htmlFor="due" className="block text-xs uppercase text-gray-500 mb-2">Due Date</label><input id="due" name="due_date" type="date" className="brutalist-input" required /></div>
           <div className="flex gap-3 pt-4"><button type="button" onClick={() => setModalOpen(false)} className="btn-secondary flex-1">Cancel</button><button type="submit" className="btn-primary flex-1">Create</button></div>
         </form>

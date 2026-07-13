@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -8,6 +8,11 @@ class DashboardStats(BaseModel):
     revenue: float
     outstanding: float
     tasks: int
+    total_revenue: float = 0.0
+    hours_tracked: float = 0.0
+    completed_projects: int = 0
+    recent_activity: list[dict] = []
+    revenue_timeline: list[dict] = []
 
 
 class RevenuePoint(BaseModel):

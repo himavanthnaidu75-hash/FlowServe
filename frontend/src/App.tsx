@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Component, ReactNode } from 'react';
+import { Component, ReactNode, useEffect } from 'react';
 import { useAuthStore } from './store/authStore';
 import { AppShell } from './components/layout/AppShell';
 import { ToastContainer } from './components/ui/Toast';
+import { api } from './lib/api';
 
 import Landing from './pages/Landing';
 import Auth from './pages/Auth';
@@ -17,6 +18,23 @@ import Settings from './pages/Settings';
 import ClientPortal from './pages/ClientPortal';
 
 const queryClient = new QueryClient();
+
+const AuthLoader = ({ children }: { children: ReactNode }) => {
+  const token = useAuthStore((s) => s.token);
+  const setUser = useAuthStore((s) => s.setUser);
+
+  useEffect(() => {
+    if (token) {
+      api.get('/auth/me').then(({ data }) => {
+        setUser(data);
+      }).catch(() => {
+        useAuthStore.getState().logout();
+      });
+    }
+  }, [token, setUser]);
+
+  return <>{children}</>;
+};
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const token = useAuthStore.getState().token;
@@ -51,26 +69,28 @@ export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
-            <Route path="/portal/:token" element={<ClientPortal />} />
-            
-            <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/projects" element={<Projects />} />
-              <Route path="/clients" element={<Clients />} />
-              <Route path="/proposals" element={<Proposals />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/time" element={<TimeTracking />} />
-              <Route path="/settings" element={<Settings />} />
-            </Route>
-            
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-          <ToastContainer />
-        </BrowserRouter>
+        <AuthLoader>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Landing />} />
+              <Route path="/auth" element={<PublicRoute><Auth /></PublicRoute>} />
+              <Route path="/portal/:token" element={<ClientPortal />} />
+              
+              <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/projects" element={<Projects />} />
+                <Route path="/clients" element={<Clients />} />
+                <Route path="/proposals" element={<Proposals />} />
+                <Route path="/invoices" element={<Invoices />} />
+                <Route path="/time" element={<TimeTracking />} />
+                <Route path="/settings" element={<Settings />} />
+              </Route>
+              
+              <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+            <ToastContainer />
+          </BrowserRouter>
+        </AuthLoader>
       </QueryClientProvider>
     </ErrorBoundary>
   );

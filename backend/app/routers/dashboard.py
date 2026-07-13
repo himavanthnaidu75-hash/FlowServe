@@ -33,6 +33,20 @@ async def get_stats(
         )
     )
 
+    completed = await db.scalar(
+        select(func.count(Project.id)).where(
+            Project.user_id == user.id,
+            Project.status == "completed",
+        )
+    )
+
+    total_revenue = await db.scalar(
+        select(func.coalesce(func.sum(Invoice.amount), 0)).where(
+            Invoice.user_id == user.id,
+            Invoice.status == "paid",
+        )
+    )
+
     revenue = await db.scalar(
         select(func.coalesce(func.sum(Invoice.amount), 0)).where(
             Invoice.user_id == user.id,
@@ -55,11 +69,22 @@ async def get_stats(
         )
     )
 
+    total_hours = await db.scalar(
+        select(func.coalesce(func.sum(TimeEntry.hours), 0)).where(
+            TimeEntry.user_id == user.id,
+        )
+    )
+
     return DashboardStats(
         active_projects=int(active or 0),
+        completed_projects=int(completed or 0),
         revenue=float(revenue or 0),
+        total_revenue=float(total_revenue or 0),
         outstanding=float(outstanding or 0),
         tasks=int(tasks or 0),
+        hours_tracked=float(total_hours or 0),
+        recent_activity=[],
+        revenue_timeline=[],
     )
 
 

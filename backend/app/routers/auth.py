@@ -27,7 +27,10 @@ async def signup(payload: SignupRequest, db: AsyncSession = Depends(get_db)):
     await db.refresh(user)
 
     token = create_access_token(user.id, extra={"name": user.name, "email": user.email})
-    return TokenResponse(access_token=token)
+    return TokenResponse(
+        access_token=token,
+        user={"id": user.id, "name": user.name, "email": user.email},
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -40,7 +43,10 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db)):
             detail="Invalid email or password",
         )
     token = create_access_token(user.id, extra={"name": user.name, "email": user.email})
-    return TokenResponse(access_token=token)
+    return TokenResponse(
+        access_token=token,
+        user={"id": user.id, "name": user.name, "email": user.email},
+    )
 
 
 @router.get("/me", response_model=UserOut)

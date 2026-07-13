@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -35,10 +35,8 @@ def _serialize(inv: Invoice) -> dict:
 
 
 async def _gen_invoice_number(db: AsyncSession, user_id: str) -> str:
-    count = await db.scalar(
-        select(func.count(Invoice.id)).where(Invoice.user_id == user_id)
-    )
-    return f"INV-{int(count or 0) + 1:04d}"
+    import uuid
+    return f"INV-{uuid.uuid4().hex[:8].upper()}"
 
 
 @router.get("", response_model=list[InvoiceOut])
@@ -47,6 +45,21 @@ async def list_invoices(
     user: User = Depends(get_current_user),
     status: str | None = None,
 ):
+    from datetime import date as _date
+    today = _date.today()
+    pending_result = await db.execute(
+        select(Invoice).where(
+            Invoice.user_id == user.id,
+            Invoice.status == "pending",
+            Invoice.due_date < today,
+        )
+    )
+    overdue_invoices = pending_result.scalars().all()
+    for inv in overdue_invoices:
+        inv.status = "overdue"
+    if overdue_invoices:
+        await db.commit()
+
     stmt = select(Invoice).where(Invoice.user_id == user.id)
     if status:
         stmt = stmt.where(Invoice.status == status)

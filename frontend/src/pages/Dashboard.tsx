@@ -5,15 +5,16 @@ import { formatCurrency } from '../lib/utils';
 
 export default function Dashboard() {
   const { data, isLoading, isError, refetch } = useFetch<any>(['dashboard'], '/dashboard/stats');
+  const { data: revenueData } = useFetch<any>(['revenue'], '/dashboard/revenue');
 
   if (isLoading) return <DashboardSkeleton />;
   if (isError) return <ErrorState onRetry={refetch} />;
 
   const stats = [
-    { label: 'Total Revenue', value: data?.total_revenue ? formatCurrency(data.total_revenue) : '$0', change: '+12.5%', icon: TrendingUp },
-    { label: 'Active Projects', value: data?.active_projects ?? 0, change: '+3', icon: Folder },
-    { label: 'Hours Tracked', value: data?.hours_tracked ?? 0, change: '+24', icon: Clock },
-    { label: 'Completed', value: data?.completed_projects ?? 0, change: '+8', icon: CheckCircle },
+    { label: 'Total Revenue', value: data?.total_revenue ? formatCurrency(data.total_revenue) : '$0', change: '', icon: TrendingUp },
+    { label: 'Active Projects', value: data?.active_projects ?? 0, change: '', icon: Folder },
+    { label: 'Hours Tracked', value: data?.hours_tracked ? `${data.hours_tracked}h` : '0h', change: '', icon: Clock },
+    { label: 'Completed', value: data?.completed_projects ?? 0, change: '', icon: CheckCircle },
   ];
 
   return (
@@ -43,7 +44,7 @@ export default function Dashboard() {
           <h3 className="text-lg font-bold mb-6">Revenue Overview</h3>
           <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data?.revenue_timeline || []}>
+              <BarChart data={revenueData || []}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} />
                 <XAxis dataKey="month" stroke="#525252" />
                 <YAxis stroke="#525252" />

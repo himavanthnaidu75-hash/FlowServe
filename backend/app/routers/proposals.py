@@ -149,8 +149,14 @@ async def send_proposal(
     </ul>
     <p>— {user.name}</p>
     """
-    loop = asyncio.get_running_loop()
-    loop.run_in_executor(None, send_email, proposal.client.email, f"New proposal: {proposal.title}", html)
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            None,
+            lambda: send_email(proposal.client.email, f"New proposal: {proposal.title}", html),
+        )
+    except Exception:
+        pass
 
     await db.commit()
     await db.refresh(proposal)

@@ -11,6 +11,7 @@ export default function Projects() {
   const [modalOpen, setModalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const { data: projects, isLoading, isError, refetch } = useFetch<any[]>(['projects'], '/projects');
+  const { data: clients } = useFetch<any[]>(['clients'], '/clients');
   const createProject = useCreate<any, any>(['projects'], '/projects');
   const { addToast } = useToastStore();
 
@@ -20,9 +21,9 @@ export default function Projects() {
     try {
       await createProject.mutateAsync({
         name: formData.get('name'),
-        client: formData.get('client'),
-        budget: Number(formData.get('budget')),
-        deadline: formData.get('deadline'),
+        client_id: formData.get('client_id'),
+        amount: Number(formData.get('amount')),
+        deadline: formData.get('deadline') || undefined,
       });
       addToast('Project created', 'success');
       setModalOpen(false);
@@ -70,7 +71,7 @@ export default function Projects() {
                 <StatusBadge status={p.status || 'active'} />
               </div>
               <h3 className="text-lg font-bold mb-1">{p.name}</h3>
-              <p className="text-sm text-gray-500 mb-4">{p.client}</p>
+              <p className="text-sm text-gray-500 mb-4">{p.client?.name || p.client_id}</p>
               
               <div className="space-y-2">
                 <div className="flex justify-between text-xs">
@@ -85,7 +86,7 @@ export default function Projects() {
               <div className="flex justify-between items-center mt-4 pt-4 border-t border-border">
                 <div>
                   <p className="text-xs text-gray-500">Budget</p>
-                  <p className="text-sm font-mono">{formatCurrency(p.budget || 0)}</p>
+                  <p className="text-sm font-mono">{formatCurrency(p.amount || 0)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-gray-500">Deadline</p>
@@ -105,15 +106,20 @@ export default function Projects() {
           </div>
           <div>
             <label htmlFor="project-client" className="block text-xs uppercase text-gray-500 mb-2">Client</label>
-            <input id="project-client" name="client" className="brutalist-input w-full" required />
+            <select id="project-client" name="client_id" className="brutalist-input w-full" required>
+              <option value="">Select a client</option>
+              {clients?.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label htmlFor="project-budget" className="block text-xs uppercase text-gray-500 mb-2">Budget ($)</label>
-            <input id="project-budget" name="budget" type="number" className="brutalist-input w-full" required />
+            <input id="project-budget" name="amount" type="number" step="0.01" className="brutalist-input w-full" required />
           </div>
           <div>
             <label htmlFor="project-deadline" className="block text-xs uppercase text-gray-500 mb-2">Deadline</label>
-            <input id="project-deadline" name="deadline" type="date" className="brutalist-input w-full" required />
+            <input id="project-deadline" name="deadline" type="date" className="brutalist-input w-full" />
           </div>
           <div className="flex gap-3 pt-4">
             <button type="button" onClick={() => setModalOpen(false)} className="btn-secondary flex-1">Cancel</button>

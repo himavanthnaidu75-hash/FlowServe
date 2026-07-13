@@ -32,14 +32,13 @@ export default function TimeTracking() {
   const handleStop = async () => {
     setIsRunning(false);
     if (elapsed > 0) {
-      await createTime.mutateAsync({ project: 'Manual', description: 'Timer session', duration: Math.round(elapsed / 60) });
+      await createTime.mutateAsync({ description: 'Timer session', hours: Math.round(elapsed / 60) / 60, billable: true, hourly_rate: 0 });
       addToast('Time logged successfully');
     }
     setElapsed(0);
   };
 
-  const totalHours = entries?.reduce((acc, e) => acc + e.duration, 0) || 0;
-  const totalAmount = entries?.reduce((acc, e) => acc + e.amount, 0) || 0;
+  const totalHours = entries?.reduce((acc, e) => acc + (e.hours || 0), 0) || 0;
 
   if (isLoading) return <div className="h-64 skeleton-shimmer rounded-xl"></div>;
   if (isError) return (
@@ -54,7 +53,7 @@ export default function TimeTracking() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl font-display font-bold">Time Tracking</h1>
-          <p className="text-gray-400 mt-1">Total: <span className="text-red-500 font-mono">{totalHours >= 60 ? `${Math.floor(totalHours / 60)}h ${totalHours % 60}m` : `${totalHours}m`}</span> | Billable: <span className="text-red-500 font-mono">{formatCurrency(totalAmount)}</span></p>
+          <p className="text-gray-400 mt-1">Total: <span className="text-red-500 font-mono">{totalHours.toFixed(1)}h</span></p>
         </div>
         <button onClick={() => setModalOpen(true)} className="btn-primary flex items-center gap-2">
           <Plus className="w-4 h-4" /> Log Time
@@ -90,16 +89,12 @@ export default function TimeTracking() {
             <div key={e.id} className="brutalist-card flex flex-col md:flex-row justify-between items-start md:items-center gap-4 py-4">
               <div>
                 <h4 className="font-bold">{e.description || 'Unnamed Task'}</h4>
-                <p className="text-sm text-gray-500">{e.project || 'General'}</p>
+                <p className="text-sm text-gray-500">{e.project_id || 'General'}</p>
               </div>
               <div className="flex items-center gap-6">
                 <div className="text-right">
-                  <p className="text-xs text-gray-500 uppercase">Duration</p>
-                  <p className="font-mono">{e.duration}m</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-500 uppercase">Amount</p>
-                  <p className="font-mono text-red-500">{formatCurrency(e.amount || 0)}</p>
+                  <p className="text-xs text-gray-500 uppercase">Hours</p>
+                  <p className="font-mono">{e.hours}h</p>
                 </div>
               </div>
             </div>
@@ -108,10 +103,9 @@ export default function TimeTracking() {
       </div>
 
       <Modal open={modalOpen} onClose={() => setModalOpen(false)} title="Log Time">
-        <form onSubmit={async (e) => { e.preventDefault(); const f = new FormData(e.currentTarget); await createTime.mutateAsync({ project: f.get('project'), description: f.get('description'), duration: Number(f.get('duration')) }); addToast('Time logged successfully'); setModalOpen(false); }} className="space-y-4">
-          <div><label htmlFor="proj" className="block text-xs uppercase text-gray-500 mb-2">Project</label><input id="proj" name="project" className="brutalist-input" required /></div>
+        <form onSubmit={async (e) => { e.preventDefault(); const f = new FormData(e.currentTarget); await createTime.mutateAsync({ description: f.get('description'), hours: Number(f.get('hours')), billable: true, hourly_rate: 0 }); addToast('Time logged successfully'); setModalOpen(false); }} className="space-y-4">
           <div><label htmlFor="desc" className="block text-xs uppercase text-gray-500 mb-2">Description</label><input id="desc" name="description" className="brutalist-input" required /></div>
-          <div><label htmlFor="dur" className="block text-xs uppercase text-gray-500 mb-2">Duration (min)</label><input id="dur" name="duration" type="number" className="brutalist-input" required /></div>
+          <div><label htmlFor="hrs" className="block text-xs uppercase text-gray-500 mb-2">Hours</label><input id="hrs" name="hours" type="number" step="0.25" min="0.25" max="24" className="brutalist-input" required /></div>
           <div className="flex gap-3 pt-4"><button type="button" onClick={() => setModalOpen(false)} className="btn-secondary flex-1">Cancel</button><button type="submit" className="btn-primary flex-1">Log</button></div>
         </form>
       </Modal>

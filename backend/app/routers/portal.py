@@ -61,12 +61,21 @@ async def portal_view(
         select(Invoice).where(Invoice.client_id == client.id).order_by(Invoice.created_at.desc())
     )
 
+    project_list = [ProjectOut.model_validate(p).model_dump() for p in projects]
+    active_projects = sum(1 for p in projects if p.status in ("draft", "in_progress", "review"))
+    completed_milestones = sum(1 for p in projects if p.status == "completed")
+
     return {
+        "client_name": client.name,
         "client": ClientOut.model_validate(client).model_dump(),
-        "projects": [ProjectOut.model_validate(p).model_dump() for p in projects],
+        "active_projects": active_projects,
+        "completed_milestones": completed_milestones,
+        "unread_messages": 0,
+        "projects": project_list,
         "invoices": [
             InvoiceOut.model_validate(_serialize_invoice(i)).model_dump() for i in invoices
         ],
+        "messages": [],
     }
 
 
@@ -82,6 +91,8 @@ async def portal_pay(
     )
     if not pt:
         raise HTTPException(status_code=404, detail="Invalid portal token")
+    if pt.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=403, detail="Portal access expired")
 
     inv = await db.scalar(
         select(Invoice).where(

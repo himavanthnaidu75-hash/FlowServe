@@ -114,7 +114,7 @@ export default function ClientPortal() {
               data?.invoices?.map((i: any) => (
                 <div key={i.id} className="brutalist-card flex justify-between items-center">
                   <div>
-                    <h4 className="font-bold font-mono">#{i.id.substring(0, 8)}</h4>
+                    <h4 className="font-bold font-mono">#{i.number}</h4>
                     <p className="text-sm text-gray-500">${i.amount}</p>
                   </div>
                   <div className="flex items-center gap-4">

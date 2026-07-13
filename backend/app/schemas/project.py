@@ -16,7 +16,8 @@ class ProjectBase(BaseModel):
 
 
 class ProjectCreate(ProjectBase):
-    status: Optional[str] = "draft"
+    progress: int = Field(0, ge=0, le=100)
+    status: Optional[str] = Field("draft", pattern="^(draft|in_progress|review|completed)$")
 
 
 class ProjectUpdate(BaseModel):

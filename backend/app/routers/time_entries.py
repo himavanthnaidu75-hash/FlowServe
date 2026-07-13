@@ -58,6 +58,22 @@ async def create_entry(
     return TimeEntryOut.model_validate(entry)
 
 
+@router.get("/{entry_id}", response_model=TimeEntryOut)
+async def get_entry(
+    entry_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    entry = await db.scalar(
+        select(TimeEntry).where(
+            TimeEntry.id == entry_id, TimeEntry.user_id == user.id
+        )
+    )
+    if not entry:
+        raise HTTPException(status_code=404, detail="Time entry not found")
+    return TimeEntryOut.model_validate(entry)
+
+
 @router.patch("/{entry_id}", response_model=TimeEntryOut)
 async def update_entry(
     entry_id: str,

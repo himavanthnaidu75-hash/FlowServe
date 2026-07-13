@@ -3,10 +3,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
 
 from app.config import settings
-from app.database import init_db, engine
+from app.database import init_db
 from app.models import *
 from app.routers import (
     auth,
@@ -55,16 +54,6 @@ app.add_middleware(
 @app.get("/health")
 async def health():
     return {"status": "ok", "app": settings.app_name, "env": settings.environment}
-
-
-@app.get("/debug/db")
-async def debug_db():
-    try:
-        async with engine.connect() as conn:
-            await conn.execute(text("SELECT 1"))
-        return {"db": "connected"}
-    except Exception as e:
-        return {"db": "error", "error": f"{type(e).__name__}: {e}"}
 
 
 # API routes — all prefixed with /api

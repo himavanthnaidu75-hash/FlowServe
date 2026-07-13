@@ -5,7 +5,7 @@ from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON
 
-from app.database import Base
+from app.base import Base
 
 
 def _uuid() -> str:

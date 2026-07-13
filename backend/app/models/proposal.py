@@ -6,7 +6,7 @@ from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
-from app.database import Base
+from app.base import Base
 
 
 def _uuid() -> str:

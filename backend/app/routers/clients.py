@@ -2,9 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user
 from app.models.client import Client
+from app.models.portal_token import PortalToken
 from app.models.user import User
 from app.schemas.client import ClientCreate, ClientOut, ClientUpdate
 
@@ -100,3 +102,28 @@ async def delete_client(
     await db.delete(client)
     await db.commit()
     return None
+
+
+@router.post("/{client_id}/portal-token")
+async def create_portal_token(
+    client_id: str,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    client = await db.scalar(
+        select(Client).where(Client.id == client_id, Client.user_id == user.id)
+    )
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    pt = PortalToken(client_id=client.id, user_id=user.id)
+    db.add(pt)
+    await db.commit()
+    await db.refresh(pt)
+
+    return {
+        "token": pt.token,
+        "client_id": pt.client_id,
+        "expires_at": pt.expires_at.isoformat(),
+        "portal_url": f"{settings.frontend_url}/portal/{pt.token}",
+    }

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,11 +19,13 @@ async def list_entries(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     project_id: str | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
     stmt = select(TimeEntry).where(TimeEntry.user_id == user.id)
     if project_id:
         stmt = stmt.where(TimeEntry.project_id == project_id)
-    stmt = stmt.order_by(TimeEntry.date.desc())
+    stmt = stmt.order_by(TimeEntry.date.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return [TimeEntryOut.model_validate(t) for t in result.scalars().all()]
 

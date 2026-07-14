@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -44,6 +44,8 @@ async def list_invoices(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     status: str | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
     from datetime import date as _date
     today = _date.today()
@@ -63,7 +65,7 @@ async def list_invoices(
     stmt = select(Invoice).where(Invoice.user_id == user.id)
     if status:
         stmt = stmt.where(Invoice.status == status)
-    stmt = stmt.order_by(Invoice.created_at.desc())
+    stmt = stmt.order_by(Invoice.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return [InvoiceOut.model_validate(_serialize(i)) for i in result.scalars().all()]
 

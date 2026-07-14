@@ -18,6 +18,8 @@ async def list_clients(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     q: str | None = Query(None, description="Search by name/email"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
     stmt = select(Client).where(Client.user_id == user.id)
     if q:
@@ -25,7 +27,7 @@ async def list_clients(
         stmt = stmt.where(
             (Client.name.ilike(like)) | (Client.email.ilike(like))
         )
-    stmt = stmt.order_by(Client.created_at.desc())
+    stmt = stmt.order_by(Client.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     clients = result.scalars().all()
 

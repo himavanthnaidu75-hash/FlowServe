@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -22,11 +22,13 @@ async def list_proposals(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_user),
     status: str | None = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=100),
 ):
     stmt = select(Proposal).where(Proposal.user_id == user.id)
     if status:
         stmt = stmt.where(Proposal.status == status)
-    stmt = stmt.order_by(Proposal.created_at.desc())
+    stmt = stmt.order_by(Proposal.created_at.desc()).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return [ProposalOut.model_validate(p) for p in result.scalars().all()]
 

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -10,6 +11,8 @@ from app.models.lead import Lead
 from app.models.user import User
 from app.schemas.lead import LeadCreate, LeadOut, LeadUpdate
 from app.services.lead_scorer import score_lead, calculate_user_history, suggest_lead_stage
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/leads", tags=["leads"])
 
@@ -57,8 +60,12 @@ async def create_lead(
     )
 
     # Auto-score
-    history = await calculate_user_history(db, user.id)
-    lead.score = score_lead(lead, history)
+    try:
+        history = await calculate_user_history(db, user.id)
+        lead.score = score_lead(lead, history)
+    except Exception as e:
+        logger.exception("Lead scoring failed, using default score 50")
+        lead.score = 50
 
     db.add(lead)
     await db.commit()

@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import JSON
 
@@ -41,7 +41,7 @@ class Contract(Base):
     variables: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
 
     # Financials
-    total_value: Mapped[float] = mapped_column(String(12), default="0", nullable=False)
+    total_value: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     payment_terms: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Dates

@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +10,8 @@ from app.models.contract import Contract
 from app.models.user import User
 from app.schemas.contract import ContractCreate, ContractOut, ContractUpdate
 from app.services.contract_generator import generate_contract
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -35,15 +39,19 @@ async def create_contract(
     user: User = Depends(get_current_user),
 ):
     # Generate from template
-    generated = generate_contract(
-        template_type=payload.contract_type,
-        variables={
-            **payload.variables,
-            "total_amount": payload.total_value,
-            "client_name": payload.variables.get("client_name", "[Client Name]"),
-        },
-        custom_content=payload.content if payload.content else None,
-    )
+    try:
+        generated = generate_contract(
+            template_type=payload.contract_type,
+            variables={
+                **payload.variables,
+                "total_amount": payload.total_value,
+                "client_name": payload.variables.get("client_name", "[Client Name]"),
+            },
+            custom_content=payload.content if payload.content else None,
+        )
+    except Exception as e:
+        logger.exception("Contract generation failed")
+        raise HTTPException(status_code=422, detail=f"Contract generation error: {str(e)}")
 
     contract = Contract(
         user_id=user.id,

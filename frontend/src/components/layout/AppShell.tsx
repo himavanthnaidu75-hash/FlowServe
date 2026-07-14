@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Menu, Search, Bell } from 'lucide-react';
 import { NavPanel } from './NavPanel';
+import { useFetch } from '../../hooks/useData';
 
 export const AppShell = () => {
   const [navOpen, setNavOpen] = useState(false);
+  const { data: countData } = useFetch<any>(['notification-count'], '/notifications/count');
+
   return (
     <div className="min-h-screen bg-bg-primary">
       <header className="sticky top-0 z-40 border-b border-border bg-bg-primary/80 backdrop-blur-md">
@@ -22,10 +25,14 @@ export const AppShell = () => {
               <Search className="w-4 h-4 text-gray-500" />
               <input placeholder="Search..." className="bg-transparent text-sm outline-none w-full" />
             </div>
-            <button aria-label="Notifications" className="relative p-2 hover:bg-bg-tertiary rounded-md transition-colors">
+            <a href="/notifications" aria-label="Notifications" className="relative p-2 hover:bg-bg-tertiary rounded-md transition-colors">
               <Bell className="w-5 h-5" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+              {countData?.unread > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white px-1">
+                  {countData.unread > 99 ? '99+' : countData.unread}
+                </span>
+              )}
+            </a>
           </div>
         </div>
       </header>

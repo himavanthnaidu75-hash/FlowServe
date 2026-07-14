@@ -18,6 +18,10 @@ from app.routers import (
     proposals,
     settings as settings_router,
     time_entries,
+    leads,
+    notifications,
+    contracts,
+    analytics,
 )
 
 logger = logging.getLogger(__name__)
@@ -29,13 +33,28 @@ async def lifespan(app: FastAPI):
         await init_db()
     except Exception as e:
         logger.exception("init_db failed")
+
+    # Start automation engine in background
+    import asyncio
+    from app.services.automation_engine import run_automations
+
+    async def automation_loop():
+        while True:
+            try:
+                await run_automations()
+            except Exception:
+                logger.exception("Automation run failed")
+            await asyncio.sleep(3600)  # Run every hour
+
+    task = asyncio.create_task(automation_loop())
     yield
+    task.cancel()
 
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
-    description="All-in-one service delivery platform for digital freelancers and agencies.",
+    version="3.0.0",
+    description="AI-powered freelancing platform with automation, lead discovery, and smart insights.",
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
@@ -64,13 +83,12 @@ async def security_headers(request: Request, call_next):
     return response
 
 
-# Health check (no auth)
 @app.get("/health")
 async def health():
-    return {"status": "ok", "app": settings.app_name, "env": settings.environment}
+    return {"status": "ok", "app": settings.app_name, "env": settings.environment, "version": "3.0.0"}
 
 
-# API routes — all prefixed with /api
+# Core API routes
 api_prefix = "/api"
 app.include_router(auth.router, prefix=api_prefix)
 app.include_router(dashboard.router, prefix=api_prefix)
@@ -82,12 +100,30 @@ app.include_router(time_entries.router, prefix=api_prefix)
 app.include_router(settings_router.router, prefix=api_prefix)
 app.include_router(portal.router, prefix=api_prefix)
 
+# New automation & intelligence routes
+app.include_router(leads.router, prefix=api_prefix)
+app.include_router(notifications.router, prefix=api_prefix)
+app.include_router(contracts.router, prefix=api_prefix)
+app.include_router(analytics.router, prefix=api_prefix)
+
 
 @app.get("/")
 async def root():
     return {
         "name": settings.app_name,
-        "version": "0.1.0",
+        "version": "3.0.0",
         "docs": "/docs",
         "health": "/health",
+        "features": [
+            "Client Management",
+            "Project Tracking",
+            "Proposal Generation",
+            "Invoice Automation",
+            "Time Tracking",
+            "Lead Discovery & Scoring",
+            "Revenue Forecasting",
+            "Smart Notifications",
+            "Contract Generation",
+            "Business Analytics",
+        ],
     }

@@ -1,6 +1,7 @@
 from collections.abc import AsyncGenerator
 from typing import AsyncContextManager
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -36,4 +37,11 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     async with engine.begin() as conn:
+        await conn.execute(
+            text(
+                "DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.columns "
+                "WHERE table_name='contracts' AND column_name='total_value' "
+                "AND data_type='character varying') THEN DROP TABLE contracts CASCADE; END IF; END $$"
+            )
+        )
         await conn.run_sync(Base.metadata.create_all)

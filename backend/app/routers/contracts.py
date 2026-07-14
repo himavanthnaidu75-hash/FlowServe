@@ -64,9 +64,14 @@ async def create_contract(
         total_value=payload.total_value,
         payment_terms=payload.payment_terms,
     )
-    db.add(contract)
-    await db.commit()
-    await db.refresh(contract)
+    try:
+        db.add(contract)
+        await db.commit()
+        await db.refresh(contract)
+    except Exception as e:
+        await db.rollback()
+        logger.exception("Contract commit failed")
+        raise HTTPException(status_code=500, detail=f"Contract save error: {str(e)}")
     return ContractOut.model_validate(contract)
 
 

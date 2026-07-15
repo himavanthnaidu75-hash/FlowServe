@@ -17,6 +17,82 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/leads", tags=["leads"])
 
 
+@router.get("/pipeline/summary")
+async def pipeline_summary(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get lead pipeline summary with counts and values per stage."""
+    stages = ["new", "contacted", "qualified", "proposal_sent", "negotiating", "won", "lost"]
+    summary = {}
+
+    for stage in stages:
+        result = await db.execute(
+            select(
+                Lead.stage,
+                Lead.estimated_budget,
+            ).where(Lead.user_id == user.id, Lead.stage == stage)
+        )
+        leads = result.all()
+        summary[stage] = {
+            "count": len(leads),
+            "total_value": sum(float(l.estimated_budget or 0) for l in leads),
+            "avg_score": sum(l.score for l in leads) // len(leads) if leads else 0,
+        }
+
+    total_pipeline = sum(
+        s["total_value"] for stage, s in summary.items() if stage not in ["won", "lost"]
+    )
+
+    return {
+        "stages": summary,
+        "total_pipeline": round(total_pipeline, 2),
+        "conversion_rate": round(
+            summary["won"]["count"] / max(sum(s["count"] for s in summary.values()), 1) * 100, 1
+        ),
+    }
+
+
+@router.get("/suggestions")
+async def lead_suggestions(
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Get AI-powered suggestions for lead management."""
+    history = await calculate_user_history(db, user.id)
+
+    top_leads = await db.execute(
+        select(Lead)
+        .where(Lead.user_id == user.id, Lead.stage.notin_(["won", "lost"]))
+        .order_by(Lead.score.desc())
+        .limit(5)
+    )
+
+    suggestions = []
+    for lead in top_leads.scalars().all():
+        suggested_stage = suggest_lead_stage(lead)
+        if suggested_stage != lead.stage:
+            suggestions.append({
+                "lead_id": lead.id,
+                "lead_name": lead.name,
+                "current_stage": lead.stage,
+                "suggested_stage": suggested_stage,
+                "reason": f"Score {lead.score}/100 — {'High priority' if lead.score >= 70 else 'Worth pursuing'}",
+            })
+
+    tips = []
+    if history["conversion_rate"] < 20:
+        tips.append("Your conversion rate is below 20%. Consider improving follow-up timing.")
+    if history["avg_project_value"] < 1000:
+        tips.append("Average project value is low. Consider upselling or targeting higher-budget clients.")
+
+    return {
+        "suggestions": suggestions,
+        "tips": tips,
+        "history": history,
+    }
+
+
 @router.get("", response_model=list[LeadOut])
 async def list_leads(
     db: AsyncSession = Depends(get_db),
@@ -59,7 +135,6 @@ async def create_lead(
         notes=payload.notes,
     )
 
-    # Auto-score
     try:
         history = await calculate_user_history(db, user.id)
         lead.score = score_lead(lead, history)
@@ -100,7 +175,6 @@ async def update_lead(
     for key, value in data.items():
         setattr(lead, key, value)
 
-    # Re-score
     history = await calculate_user_history(db, user.id)
     lead.score = score_lead(lead, history)
 
@@ -155,81 +229,3 @@ async def convert_lead_to_client(
     await db.commit()
     await db.refresh(lead)
     return LeadOut.model_validate(lead)
-
-
-@router.get("/pipeline/summary")
-async def pipeline_summary(
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    """Get lead pipeline summary with counts and values per stage."""
-    stages = ["new", "contacted", "qualified", "proposal_sent", "negotiating", "won", "lost"]
-    summary = {}
-
-    for stage in stages:
-        result = await db.execute(
-            select(
-                Lead.stage,
-                Lead.estimated_budget,
-            ).where(Lead.user_id == user.id, Lead.stage == stage)
-        )
-        leads = result.all()
-        summary[stage] = {
-            "count": len(leads),
-            "total_value": sum(float(l.estimated_budget or 0) for l in leads),
-            "avg_score": sum(l.score for l in leads) // len(leads) if leads else 0,
-        }
-
-    total_pipeline = sum(
-        s["total_value"] for stage, s in summary.items() if stage not in ["won", "lost"]
-    )
-
-    return {
-        "stages": summary,
-        "total_pipeline": round(total_pipeline, 2),
-        "conversion_rate": round(
-            summary["won"]["count"] / max(sum(s["count"] for s in summary.values()), 1) * 100, 1
-        ),
-    }
-
-
-@router.get("/suggestions")
-async def lead_suggestions(
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    """Get AI-powered suggestions for lead management."""
-    history = await calculate_user_history(db, user.id)
-
-    # Get top leads by score
-    top_leads = await db.execute(
-        select(Lead)
-        .where(Lead.user_id == user.id, Lead.stage.notin_(["won", "lost"]))
-        .order_by(Lead.score.desc())
-        .limit(5)
-    )
-
-    suggestions = []
-    for lead in top_leads.scalars().all():
-        suggested_stage = suggest_lead_stage(lead)
-        if suggested_stage != lead.stage:
-            suggestions.append({
-                "lead_id": lead.id,
-                "lead_name": lead.name,
-                "current_stage": lead.stage,
-                "suggested_stage": suggested_stage,
-                "reason": f"Score {lead.score}/100 — {'High priority' if lead.score >= 70 else 'Worth pursuing'}",
-            })
-
-    # General tips
-    tips = []
-    if history["conversion_rate"] < 20:
-        tips.append("Your conversion rate is below 20%. Consider improving follow-up timing.")
-    if history["avg_project_value"] < 1000:
-        tips.append("Average project value is low. Consider upselling or targeting higher-budget clients.")
-
-    return {
-        "suggestions": suggestions,
-        "tips": tips,
-        "history": history,
-    }

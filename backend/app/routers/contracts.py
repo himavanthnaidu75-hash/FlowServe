@@ -16,6 +16,18 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
 
+@router.post("/generate")
+async def generate_from_template(
+    template_type: str,
+    variables: dict = {},
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Preview a generated contract from template."""
+    generated = generate_contract(template_type, variables)
+    return generated
+
+
 @router.get("", response_model=list[ContractOut])
 async def list_contracts(
     db: AsyncSession = Depends(get_db),
@@ -124,15 +136,3 @@ async def delete_contract(
         raise HTTPException(status_code=404, detail="Contract not found")
     await db.delete(contract)
     await db.commit()
-
-
-@router.post("/generate")
-async def generate_from_template(
-    template_type: str,
-    variables: dict = {},
-    db: AsyncSession = Depends(get_db),
-    user: User = Depends(get_current_user),
-):
-    """Preview a generated contract from template."""
-    generated = generate_contract(template_type, variables)
-    return generated
